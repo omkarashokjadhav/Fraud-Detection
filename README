@@ -1,0 +1,101 @@
+# WARDEN — Fraud Analyst Desk
+
+Two pieces:
+
+- **`app.py`** — Flask API: JWT auth, transaction scoring, SHAP explainability,
+  metrics (confusion matrix, ROC/PR, model comparison), CSV/PDF export, admin
+  endpoints, optional Socket.IO real-time push.
+- **`dashboard.html`** — the frontend. Open it directly in a browser (double-click
+  the file, no build step). It talks to the API at `http://localhost:5000/api`.
+  If the API isn't running, it automatically falls back to an offline demo mode
+  with simulated data so you can still click through everything.
+
+## Run the backend
+
+```bash
+cd warden-backend
+pip install -r requirements.txt
+python app.py
+```
+
+This seeds a SQLite file `warden.db` with two accounts on first run:
+
+| Email | Password | Role |
+|---|---|---|
+| `admin@warden.local` | `Warden123!` | admin |
+| `analyst@warden.local` | `Warden123!` | analyst |
+
+By default it uses a heuristic risk scorer (no model file needed) so it runs
+out of the box. It also seeds 15 sample transactions and starts scoring new
+ones every few seconds once the dashboard is open.
+
+## Enable the AI narrative + chat assistant
+
+These features call Gemini through your own backend (matching your original
+notebook), so they need a Gemini API key on the server:
+
+```bash
+export GEMINI_API_KEY=your-key-here
+python app.py
+```
+
+Get a free key at https://aistudio.google.com/apikey. If you landed on a
+specific model in your notebook after debugging quota/deprecation issues,
+set it explicitly (defaults to `gemini-2.0-flash` otherwise):
+
+```bash
+export GEMINI_MODEL=gemini-2.0-flash   # or whichever model you settled on
+```
+
+Without `GEMINI_API_KEY` set, the narrative and chat panels show a clear
+"not configured" message instead of failing silently.
+
+## Wire up your real model
+
+Point it at the artifacts from your notebook:
+
+```bash
+export WARDEN_MODEL_PATH=/path/to/xgb_model.pkl
+export WARDEN_DATA_PATH=/path/to/X_test.csv      # optional: real ROC/PR + confusion matrix
+export WARDEN_LABELS_PATH=/path/to/y_test.csv    # single column of true labels, same row order as X_test
+python app.py
+```
+
+`X_test.csv` needs these columns (matching your feature engineering step):
+`step, amount, oldbalanceOrg, newbalanceOrig, oldbalanceDest, newbalanceDest, errorBalanceOrig, errorBalanceDest, origAccountEmptied`.
+
+Without a model file, `/api/metrics/confusion-matrix` and `/api/metrics/curve`
+return the numbers you already reported from the notebook (F1 0.989 for
+XGBoost, etc.) so the ML dashboard still looks correct.
+
+## Open the dashboard
+
+Just open `dashboard.html` in a browser. Sign in with one of the seeded
+accounts, then verify with the on-screen demo OTP code (no real SMS is sent —
+this is a prototype 2FA step).
+
+## What's real vs. simulated
+
+**Real and functional:**
+- JWT auth, registration, account lockout after 5 failed logins, audit log, login history
+- Flask endpoints for transactions, decisions, metrics, CSV/PDF export
+- SHAP explainability (real SHAP values if you wire up your model, heuristic otherwise)
+- AI narrative + chat assistant — calls the Gemini API server-side, grounded in
+  the selected transaction's data and SHAP values
+- CSV export (server-generated); PDF export (server-generated via `fpdf2`)
+
+**Simulated / for demo purposes:**
+- Transaction locations and "impossible travel" detection use mock city
+  coordinates, not real IP geolocation or device fingerprinting
+- Real-time feed generates synthetic transactions on a timer rather than
+  ingesting live payment traffic
+- Email alerts aren't wired up (browser notifications + a sound alert are —
+  click the bell icon and allow permissions); email would need an SMTP/SES
+  integration
+- One-click model retraining and multi-model A/B rollout aren't included —
+  those need a training pipeline and model registry beyond this scope
+
+**Note on the AI calls:** the dashboard calls Gemini through your Flask
+backend (`/api/transactions/<id>/narrative` and `/chat`), which holds
+`GEMINI_API_KEY` server-side. The browser never talks to Google's API
+directly, so your key is never exposed client-side.

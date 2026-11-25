@@ -1,0 +1,18 @@
+flask==3.0.3
+flask-cors==4.0.1
+flask-socketio==5.3.6
+PyJWT==2.9.0
+werkzeug==3.0.4
+fpdf2==2.7.9
+requests==2.32.3
+
+# Optional — only needed if you point WARDEN_MODEL_PATH at your real xgb_model.pkl.
+# Without these installed, the API automatically falls back to the built-in
+# heuristic scorer so the rest of the app still works.
+joblib==1.4.2
+shap==0.46.0
+scikit-learn==1.5.2
+pandas==2.2.2
+numpy==1.26.4
+gunicorn
+eventlet

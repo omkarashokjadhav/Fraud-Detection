@@ -165,7 +165,7 @@ def init_db():
         for email, role in [("admin@warden.local", "admin"), ("analyst@warden.local", "analyst")]:
             c.execute(
                 "INSERT INTO users (email, password_hash, role, created_at) VALUES (?,?,?,?)",
-                (email, generate_password_hash("Warden123!"), role, now),
+                (email, generate_password_hash(""), role, now),
             )
         conn.commit()
     conn.close()
